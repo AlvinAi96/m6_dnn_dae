@@ -5,7 +5,7 @@ Final Global Rank: 4th<br>
 
 ### 2. Implementation
 ```
-cd m6_dea_dnn
+cd m6_dnn_dae
 ```
 
 (1) Data Pulling
