@@ -1,4 +1,8 @@
 from sko.DE import DE
+import pandas as pd
+import numpy as np
+import cvxopt as opt
+from cvxopt import blas, solvers
 
 def optimal_portfolio(returns):
     # Markovitz
@@ -39,8 +43,8 @@ class DE_portfolio:
         0.25 <= abs(x1) + ... + abs(x100) <= 1
         -1 <= x1, ..., x100 <= 1
     '''
-    def __init__(self, ):
-        self.constraint_eq = []
+    def __init__(self, constraint_eq, constraint_ueq):
+        self.constraint_eq = constraint_eq
         self.constraint_ueq = constraint_ueq
 
     @staticmethod

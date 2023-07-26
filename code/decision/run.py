@@ -1,10 +1,10 @@
-from utils import optimal_portfolio, DE_portfolio
 
 import numpy as np
 import pandas as pd
 import os
 from scipy.stats import rankdata
 from statsmodels.tsa.api import ExponentialSmoothing, SimpleExpSmoothing, Holt
+from utils import optimal_portfolio, DE_portfolio
 
 
 class Test:
