@@ -70,8 +70,8 @@ class DE_portfolio:
         return -annualized_IR
 
     def run(self):
-        de = DE(func=obj_func, n_dim=100, size_pop=2000, max_iter=300, lb=[-1]*100, ub=[1]*100,
-    constraint_eq=constraint_eq, constraint_ueq=constraint_ueq)
+        de = DE(func=DE_portfolio.obj_func, n_dim=100, size_pop=2, max_iter=20, lb=[-1]*100, ub=[1]*100,
+    constraint_eq=self.constraint_eq, constraint_ueq=self.constraint_ueq)
 
         
         best_x, best_y = de.run()
@@ -79,6 +79,6 @@ class DE_portfolio:
 
         best20_generation = np.array(de.generation_best_Y).argsort()[:20]
 
-        return weights
+        return best20_generation
 
     
