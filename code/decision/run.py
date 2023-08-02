@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from scipy.stats import rankdata
 from statsmodels.tsa.api import ExponentialSmoothing, SimpleExpSmoothing, Holt
-from utils import optimal_portfolio, DE_portfolio
+from utils import optimal_portfolio, DE_portfolio, black_litterman
 
 
 class Test:
@@ -72,16 +72,18 @@ class Test:
 
     def run(self):
         return_vec = pd.read_csv('real_returns_0501.csv')
-        weights, returns, risks = optimal_portfolio(return_vec.to_numpy())
+        # print(return_vec.shape)
+        black_litterman(return_vec)
+        # weights, returns, risks = optimal_portfolio(return_vec.to_numpy())
 
-        de = DE_portfolio(constraint_eq=[], 
-                            constraint_ueq=[
-                                            # 小于等于0
-                                            lambda x: sum([abs(i) for i in x]) - 1,
-                                            lambda x: 0.25 - sum([abs(i) for i in x])
-                                        ])
+        # de = DE_portfolio(constraint_eq=[], 
+        #                     constraint_ueq=[
+        #                                     # 小于等于0
+        #                                     lambda x: sum([abs(i) for i in x]) - 1,
+        #                                     lambda x: 0.25 - sum([abs(i) for i in x])
+        #                                 ])
 
-        weights = de.run()
+        # weights = de.run()
 
 
 if __name__ == "__main__":

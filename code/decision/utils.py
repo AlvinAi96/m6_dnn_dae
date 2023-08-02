@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import cvxopt as opt
 from cvxopt import blas, solvers
+from scipy.optimize import minimize
+
 
 def optimal_portfolio(returns):
     # Markovitz
@@ -81,4 +83,44 @@ class DE_portfolio:
 
         return best20_generation
 
-    
+
+def black_litterman(return_vec):
+
+    n = return_vec.shape[1]
+    return_vec = return_vec.to_numpy()
+
+    prior_returns = np.random.rand(n)
+
+    # views = np.random.rand(n)
+    views = np.random.rand(5)
+    # picked = np.random.choice(range(n), 5, replace=False)
+
+    P = np.identity(n)
+    tau = 0.05
+
+    Omega = np.transpose(P) * P
+    # posterior = np.matmul((tau * prior_returns + np.matmul(np.transpose(P), views)), 
+    #                         np.linalg.inv(tau*np.identity(len(Omega)) + Omega))
+
+    views_matrix = np.tile(views, (n, 1)) 
+    prior_returns = prior_returns[:, np.newaxis]
+    posterior = np.matmul( np.linalg.inv(tau*np.identity(n) + Omega), 
+                            (tau * prior_returns) + np.matmul(P, views_matrix))  
+                    
+
+
+
+    cov = np.cov(np.transpose(return_vec))
+    init_weights = np.repeat(1/n, n)
+
+    def fitness(weights):
+        return -np.sum(np.dot(weights, posterior)) + 0.01 * np.mean(np.dot(weights, cov))
+
+    bounds = [(0, 1) for i in range(n)]
+    constraints = [{'type':'eq', 
+                    'fun': lambda w: 1 - np.sum(w)}]
+
+    optimized = minimize(fitness, init_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+
+    return optimized.x
+
