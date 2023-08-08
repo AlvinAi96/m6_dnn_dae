@@ -81,7 +81,7 @@ class DE_portfolio:
 
         best20_generation = np.array(de.generation_best_Y).argsort()[:20]
 
-        return best20_generation
+        return best20_generation, de.generation_best_X
 
 
 def black_litterman(returns):

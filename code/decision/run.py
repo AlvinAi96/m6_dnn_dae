@@ -83,7 +83,7 @@ class Test:
         #                                     lambda x: 0.25 - sum([abs(i) for i in x])
         #                                 ])
 
-        # weights = de.run()
+        # vals, weights = de.run()
 
 
 if __name__ == "__main__":
