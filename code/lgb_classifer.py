@@ -111,7 +111,7 @@ def run(model_params,
 
     # plot feature importance
     if visual_import_flag == True:
-        _ = plot_feat_importances(USE_COLS, lgb_model, 'lightgbm', root_path)
+        _ = plot_feat_importances(USE_COLS, lgb_model, 'lightgbm', root_path+'code/')
         
 
     print('==========Total Result Analysis==========')
@@ -162,20 +162,21 @@ if __name__=="__main__":
     }   
 
     root_path = './'
-    train_fname = 'pp_data/train_rank_df.csv'
-    valid_fname = 'pp_data/valid_rank_df.csv'
-    test_fname = 'pp_data/test_rank_df.csv'
-    pred_fname = 'pp_data/predict_rank_df.csv'
-    meta_fname = 'pp_data/M6_Universe.csv'
+    feat_type = 'BF_TF_ARF_WF'
+    train_fname = f'pp_data/train_rank_df_{feat_type}.csv'
+    valid_fname = f'pp_data/valid_rank_df_{feat_type}.csv'
+    test_fname = f'pp_data/test_rank_df_{feat_type}.csv'
+    pred_fname = f'pp_data/predict_rank_df_{feat_type}.csv'
+    meta_fname = f'pp_data/M6_Universe.csv'
     
     # feature selection
     top_fnum = None
     corr_thresh = 0.10
 
-    infer_flag = True               # Is it the inference stage (i.e., training using the entire dataset)?
+    infer_flag = False               # Is it the inference stage (i.e., training using the entire dataset)?
     remove_unstable_flag = True     # feature selection or not 
-    save_model_flag = True          # save bes model ckpt or not
-    visual_import_flag = True       # plot feature importance or not
+    save_model_flag = True           # save bes model ckpt or not
+    visual_import_flag = True        # plot feature importance or not
 
     
     run(model_params,
