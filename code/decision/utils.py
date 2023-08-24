@@ -48,15 +48,19 @@ class DE_portfolio:
     def __init__(self, constraint_eq, constraint_ueq):
         self.constraint_eq = constraint_eq
         self.constraint_ueq = constraint_ueq
+        self.daily_returns = pd.read_csv('real_returns_0501.csv')[-20:].reset_index(drop=True).T
+        # self.daily_returns = returns.T
+        # self.daily_returns['ID'] = self.daily_returns.index.tolist()
 
     @staticmethod
     def obj_func(p):
         ''' IR越大越好
         '''
-        daily_returns = pd.read_csv('real_returns_0501.csv')[-20:].reset_index(drop=True).T
-        # daily_returns = pd.read_csv('real_returns.csv')[:10].T
+        daily_returns = pd.read_csv('DE_data.csv').T
         daily_returns['ID'] = daily_returns.index.tolist()
-        decisions = pd.DataFrame({'decision': p, 'ID':daily_returns.index.tolist()})    
+        # daily_returns = pd.read_csv('real_returns.csv')[:10].T
+        
+        decisions = pd.DataFrame({'decision': p, 'ID': daily_returns.index.tolist()})    
         portfolio = daily_returns.merge(decisions, on='ID')
         portfolio = portfolio[portfolio.decision != 0]
         weighted_portfolio_return = pd.DataFrame((portfolio.iloc[:, :daily_returns.shape[1]-1].to_numpy().T * portfolio.decision.to_numpy()).T)
@@ -71,13 +75,13 @@ class DE_portfolio:
         annualized_IR = (D+1)/D * 12 * ret_T / np.sqrt(252) / sdp
         return -annualized_IR
 
-    def run(self):
-        de = DE(func=DE_portfolio.obj_func, n_dim=100, size_pop=2, max_iter=20, lb=[-1]*100, ub=[1]*100,
+    def run(self, n_dim=100, size_pop=2, max_iter=20, lb=[-1]*100, ub=[1]*100):
+        de = DE(func=DE_portfolio.obj_func, n_dim=100, size_pop=2, max_iter=20, lb=lb, ub=ub,
     constraint_eq=self.constraint_eq, constraint_ueq=self.constraint_ueq)
 
         
         best_x, best_y = de.run()
-        print('best_y:', best_y)
+        # print('best_y:', best_y)
 
         best20_generation = np.array(de.generation_best_Y).argsort()[:20]
 
