@@ -35,13 +35,20 @@ from tensorflow.keras import backend as K
 from sklearn.metrics import recall_score, f1_score, accuracy_score
 import logging
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
+import random
 
+def seed_tensorflow(seed=2020):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
 
+seed_tensorflow()
 
 def make_dataset(feature, asset_id, y, batch_size=800, mode="train"):
     '''Prepare train dataset'''
     # transfer multi-D tensor -> 1d tensor
-    ds = tf.data.Dataset.from_tensor_slices(((asset_id, feature), (feature, y, y)))
+    ds = tf.data.Dataset.from_tensor_slices(((asset_id, feature), (y)))
     if mode == "train":
         # in avoid of insufficient memory ，shuffle for each buffer_size data
         ds = ds.shuffle(buffer_size=4096, seed=2022)
@@ -120,6 +127,9 @@ def run(model_params,
     # If making inference and submitting results, train using the entire dataset
     if infer_flag == True:
         train_df = pd.concat([train_df, valid_df, test_df], axis=0).reset_index(drop=True)
+    train_df.fillna(0, inplace=True)
+    valid_df.fillna(0, inplace=True)
+    test_df.fillna(0, inplace=True)
 
     # define feature column and target column
     NUM_CLASS = model_params['num_class']
@@ -137,7 +147,7 @@ def run(model_params,
                 'ind_mean' not in f and 'ind_var' not in f:   # drop industry-agg feature
             USE_COLS.append(f) 
 
-
+    print('init feature number:', len(USE_COLS))
     asset_id_df = pd.DataFrame({'asset':list(train_df['asset'].unique())})
 
     # standardlization
@@ -159,7 +169,9 @@ def run(model_params,
         pred_df.drop(unstable_feats, axis=1, inplace=True)
         print('Feature Selection | train_df:{}, valid_df:{}, test_df:{}, pred_df:{}'.format(train_df.shape, valid_df.shape, test_df.shape, pred_df.shape))
         USE_COLS = [f for f in USE_COLS if f not in unstable_feats]
-        
+        print('after feature selection, feature number:', len(USE_COLS))
+        print('unstable feature number:', len(unstable_feats))
+
     USE_COLS.append('asset')
     FEAT_SIZE = len(USE_COLS)                                       # feature number
     ID_SIZE = 100                                                   # asset number
@@ -237,17 +249,18 @@ if __name__=="__main__":
                 'epoch':100}
 
     root_path = './'
-    train_fname = 'PP_data/train_rank_df.csv'
-    valid_fname = 'PP_data/valid_rank_df.csv'
-    test_fname = 'PP_data/test_rank_df.csv'
-    pred_fname = 'PP_data/predict_rank_df.csv'
-    meta_fname = 'PP_data/M6_Universe.csv'
+    feat_type = 'BF_TF_ARF_WF'
+    train_fname = f'pp_data/train_rank_df_{feat_type}.csv'
+    valid_fname = f'pp_data/valid_rank_df_{feat_type}.csv'
+    test_fname = f'pp_data/test_rank_df_{feat_type}.csv'
+    pred_fname = f'pp_data/predict_rank_df_{feat_type}.csv'
+    meta_fname = f'pp_data/M6_Universe.csv'
 
     # feature selection
     top_fnum = None
-    corr_thresh = 0.10
+    corr_thresh = 0.15 # 0.10
 
-    infer_flag = True               # Is it the inference stage (i.e., training using the entire dataset)?
+    infer_flag = False               # Is it the inference stage (i.e., training using the entire dataset)?
     scale_flag = True               # scale or not
     remove_unstable_flag = True     # feature selection or not 
     save_model_flag = True          # save best model ckpt or not

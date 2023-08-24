@@ -1,3 +1,4 @@
+#coding=utf-8
 """
 feature_enginner.py
 @author: aihongfeng
@@ -5,6 +6,7 @@ feature_enginner.py
 @function: feature engineering.
 """
 import os
+import argparse
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
@@ -200,10 +202,14 @@ def agg_industry_feats(all_df, ind_agg_dict):
     date_df_list = [] 
     for date, date_df in tqdm(all_df.groupby('Date')):
         new_ind_df_list = [] 
+        # date_df.to_csv('./test.csv', index=False)
         for ind, ind_df in date_df.groupby('GICS_sector/ETF_type'):
             new_ind_df = ind_df.copy(deep=True)
+            # print(ind_df.columns)
             ind_df_list = [] 
             for f in ind_agg_dict.keys():
+                # if f not in ind_df.columns:
+                #     print(f'{f} not in ind_df.columns')
                 agg_df = new_ind_df[[f]].agg(ind_agg_dict[f])
                 new_cols = [f+'_ind_'+str(postfix) for postfix in list(agg_df.index)]
                 agg_df = agg_df.transpose()
@@ -290,6 +296,7 @@ def get_return_rank_label2(df):
     for date in dates:
         daily_returns = df[df['Date']==date][['asset','return']]
         daily_returns_index = daily_returns.index
+        daily_returns = daily_returns.fillna(0) # 新加的
         data = rankdata(daily_returns['return'])
         data = np.array(data).astype(int) // 20.01 + 1
         data = data.astype(int)
@@ -301,7 +308,7 @@ def get_return_rank_label2(df):
     return df
 
 
-def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dict, window_sizes, window_weight):
+def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dict, window_sizes, window_weight, ind_agg_dict):
     """Run feature enginnering"""
     all_df = load_all_files(data_path)
     all_df = get_basic_feats(all_df)
@@ -318,11 +325,11 @@ def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dic
     all_df.drop(index = all_df[all_df['Adjusted_close_Hnorm_win22_mean'].isnull()].index, axis=0, inplace=True)
     
     # @ahf：The introduction of industry information does not bring improvement to the model.
-    # all_df = pd.merge(all_df, meta_df[['symbol','GICS_sector/ETF_type']], how='left', left_on='asset', right_on='symbol')
-    # all_df = agg_industry_feats(all_df, ind_agg_dict)
+    all_df = pd.merge(all_df, meta_df[['symbol','GICS_sector/ETF_type']], how='left', left_on='asset', right_on='symbol')
+    all_df = agg_industry_feats(all_df, ind_agg_dict)
     
 
-    all_df = extract_seasonal_feat(all_df, f='Adjusted_close_Hnorm', window_size=22)
+    # all_df = extract_seasonal_feat(all_df, f='Adjusted_close_Hnorm', window_size=22)
     all_df = get_return_label(all_df)
     all_df = add_type_id(meta_df, all_df)
     all_df = symbol2assetID(meta_df, all_df)
@@ -342,10 +349,11 @@ def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dic
     test_df = all_df[all_df['data_type']=='test'].reset_index(drop=True)
 
     # save dataset
-    train_df.to_csv(self_data_path + 'train_rank_df.csv', index=False)
-    valid_df.to_csv(self_data_path + 'valid_rank_df.csv', index=False)
-    test_df.to_csv(self_data_path + 'test_rank_df.csv', index=False)
-    predict_df.to_csv(self_data_path + 'predict_rank_df.csv', index=False)
+    feat_type = 'BF_TF_ARF_WF'
+    train_df.to_csv(f'{self_data_path}train_rank_df_{feat_type}.csv', index=False)
+    valid_df.to_csv(f'{self_data_path}valid_rank_df_{feat_type}.csv', index=False)
+    test_df.to_csv(f'{self_data_path}test_rank_df_{feat_type}.csv', index=False)
+    predict_df.to_csv(f'{self_data_path}predict_rank_df_{feat_type}.csv', index=False)
 
     print("Finish Feature Engineering!")
     print('train:{}, valid:{}, test:{}, predict:{}'.format(train_df.shape, valid_df.shape, test_df.shape, predict_df.shape))
@@ -386,16 +394,16 @@ if __name__=="__main__":
 
     # # industry-agg features
     # # Note: if each class only has a single value, using var and other agg function will lead to None
-    # ind_agg_dict = {
-    # 'Adjusted_close_Vnorm_mean':[np.mean],
-    # 'Volume_Vnorm_mean':[np.mean],
-    # 'cash_flow_Vnorm_mean':[np.mean],
-    # 'open_high_ratio_Vnorm_mean':[np.mean],
-    # 'open_low_ratio_Vnorm_mean':[np.mean],
-    # 'close_high_ratio_Vnorm_mean':[np.mean],
-    # 'close_low_ratio_Vnorm_mean':[np.mean],
-    # 'high_low_ratio_Vnorm_mean':[np.mean]
-    # }
+    ind_agg_dict = {
+    'Adjusted_close_Vnorm_win22_mean':[np.mean],
+    'Volume_Vnorm_win22_mean':[np.mean],
+    'cash_flow_Vnorm_win22_mean':[np.mean],
+    'open_high_ratio_Vnorm_win22_mean':[np.mean],
+    'open_low_ratio_Vnorm_win22_mean':[np.mean],
+    'close_high_ratio_Vnorm_win22_mean':[np.mean],
+    'close_low_ratio_Vnorm_win22_mean':[np.mean],
+    'high_low_ratio_Vnorm_win22_mean':[np.mean]
+    }
 
     train_ratio = 0.7 
     test_cnt = 160    
@@ -403,4 +411,4 @@ if __name__=="__main__":
     # Run feature engineering
     train_df, valid_df, test_df, predict_df = run_feature_enginner(data_path, meta_df,
                                                                     train_ratio, test_cnt,
-                                                                    feat_agg_dict, window_sizes, window_weight)
+                                                                    feat_agg_dict, window_sizes, window_weight, ind_agg_dict)

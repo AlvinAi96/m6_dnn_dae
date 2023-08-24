@@ -39,15 +39,16 @@ def get_corr_unstable_feats(tgt_df, use_cols, top_fnum=10, corr_thresh=0.15):
     corr_df = []
     for date_ym in date_yms:
         curr_df = df[df['Date_ym']==date_ym]
-        curr_corr_df = curr_df.corr()
+        curr_df = curr_df[[f for f in list(curr_df) if f != 'Date_ym']]
+        curr_corr_df = curr_df.corr(numeric_only=True)
         curr_corr_df = curr_corr_df['Rank'].reset_index()
         curr_corr_df.rename(columns={'index':'feature', 'Rank':'corr'}, inplace=True)
-        curr_corr_df['Date_ym'] = str(date_ym)
         corr_df.append(curr_corr_df)
     corr_df = pd.concat(corr_df, axis=0).reset_index(drop=True)
 
     # select training features
     corr_df = corr_df[corr_df['feature'].isin(use_cols)]
+    # print(corr_df)
 
     # select top unstable features based on the corr's std of each feature
     if top_fnum != None:

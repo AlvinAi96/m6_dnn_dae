@@ -5,7 +5,7 @@ Final Global Rank: 4th<br>
 
 ### 2. Implementation
 ```
-cd m6_dnn_dae
+cd m6_dea_dnn
 ```
 
 (1) Data Pulling
@@ -15,20 +15,20 @@ python ./code/feature/data_crawler.py --meta_path './eod_data/M6_Universe.csv' -
 
 (2) Feature Engieering
 ```
-python feature_engineer.py --data_path './data/' --self_data_path './pp_data/'
+python ./code/feature/feature_engineer.py --data_path './data/' --self_data_path './pp_data/'
 ```
 
 (3) Forecast Modeling
 we support three models for forecasting.
 ```
 # LightGBM
-python lgb_classifier.py
+python ./code/lgb_classifier.py
 
 # DNN
-python dnn_classifier.py
+python ./code/dnn_classifier.py
 
 # DNN with DAE
-python autoencoder_dnn_classifier.py
+python ./code/autoencoder_dnn_classifier.py
 ```
 
 (4) Decision Making
