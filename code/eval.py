@@ -28,7 +28,7 @@ def multi_class_eval(y_true, y_pred, data_type):
     micro_f1 = f1_score(y_true, y_pred, average='micro') # Micro F1
     macro_f1 = f1_score(y_true, y_pred, average='macro') # Macro F1
     print('%s |accuracy:%.3f, micro_recall:%.3f, macro_recall:%.3f, micro_f1:%.3f, macro_f1:%.3f' % (data_type, acc, micro_recall, macro_recall, micro_f1, macro_f1))
-
+    return acc, micro_recall, macro_recall, micro_f1, macro_f1
 
 
 def calRPS(rank_df):

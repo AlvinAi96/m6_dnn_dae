@@ -15,7 +15,8 @@ python ./code/feature/data_crawler.py --meta_path './eod_data/M6_Universe.csv' -
 
 (2) Feature Engieering
 ```
-python ./code/feature/feature_engineer.py --data_path './data/' --self_data_path './pp_data/'
+mkdir pp_data2
+python ./code/feature/feature_engineer.py --data_path './data/' --self_data_path './pp_data2/'
 ```
 
 (3) Forecast Modeling

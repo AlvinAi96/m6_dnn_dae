@@ -308,6 +308,59 @@ def get_return_rank_label2(df):
     return df
 
 
+# def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dict, window_sizes, window_weight, ind_agg_dict):
+#     """Run feature enginnering"""
+#     all_df = load_all_files(data_path)
+#     all_df = get_basic_feats(all_df)
+#     all_df = drop_date_with_less_asset(all_df, asset_num=80)
+#     all_df = add_data_type(all_df, train_ratio, test_cnt)
+#     all_df = get_horizontal_standard_feats(all_df)
+#     all_df = get_vertical_standard_feats(all_df)
+#     all_df = agg_window_feats(all_df, feat_agg_dict, window_sizes, window_weight)
+
+#     # Due to the sliding window statistics performed earlier,
+#     # there may be missing values generated within the initial
+#     # time period where statistics cannot be calculated. 
+#     # These sample points need to be removed.
+#     all_df.drop(index = all_df[all_df['Adjusted_close_Hnorm_win22_mean'].isnull()].index, axis=0, inplace=True)
+    
+#     # @ahf：The introduction of industry information does not bring improvement to the model.
+#     all_df = pd.merge(all_df, meta_df[['symbol','GICS_sector/ETF_type']], how='left', left_on='asset', right_on='symbol')
+#     all_df = agg_industry_feats(all_df, ind_agg_dict)
+    
+
+#     # all_df = extract_seasonal_feat(all_df, f='Adjusted_close_Hnorm', window_size=22)
+#     all_df = get_return_label(all_df)
+#     all_df = add_type_id(meta_df, all_df)
+#     all_df = symbol2assetID(meta_df, all_df)
+#     all_df = get_return_rank_label2(all_df)
+
+#     # Obtain the predict.csv file, which contains the latest
+#     # sample for each asset based on its most recent date.
+#     null_return_df = all_df[all_df['return'].isnull()]
+#     predict_df_list = []
+#     for asset, a_df in null_return_df.groupby('asset'):
+#         predict_df_list.append(a_df.iloc[[-1],:])
+#     predict_df = pd.concat(predict_df_list, axis=0).reset_index(drop=True)
+
+#     # gain train/valid/test.csv
+#     train_df = all_df[all_df['data_type']=='train'].reset_index(drop=True)
+#     valid_df = all_df[all_df['data_type']=='valid'].reset_index(drop=True)
+#     test_df = all_df[all_df['data_type']=='test'].reset_index(drop=True)
+
+#     # save dataset
+#     feat_type = 'BF_TF_ARF_WF'
+#     train_df.to_csv(f'{self_data_path}train_rank_df_{feat_type}.csv', index=False)
+#     valid_df.to_csv(f'{self_data_path}valid_rank_df_{feat_type}.csv', index=False)
+#     test_df.to_csv(f'{self_data_path}test_rank_df_{feat_type}.csv', index=False)
+#     predict_df.to_csv(f'{self_data_path}predict_rank_df_{feat_type}.csv', index=False)
+
+#     print("Finish Feature Engineering!")
+#     print('train:{}, valid:{}, test:{}, predict:{}'.format(train_df.shape, valid_df.shape, test_df.shape, predict_df.shape))
+#     return train_df, valid_df, test_df, predict_df
+
+
+
 def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dict, window_sizes, window_weight, ind_agg_dict):
     """Run feature enginnering"""
     all_df = load_all_files(data_path)
@@ -325,13 +378,13 @@ def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dic
     all_df.drop(index = all_df[all_df['Adjusted_close_Hnorm_win22_mean'].isnull()].index, axis=0, inplace=True)
     
     # @ahf：The introduction of industry information does not bring improvement to the model.
-    all_df = pd.merge(all_df, meta_df[['symbol','GICS_sector/ETF_type']], how='left', left_on='asset', right_on='symbol')
-    all_df = agg_industry_feats(all_df, ind_agg_dict)
+    # all_df = pd.merge(all_df, meta_df[['symbol','GICS_sector/ETF_type']], how='left', left_on='asset', right_on='symbol')
+    # all_df = agg_industry_feats(all_df, ind_agg_dict)
     
 
     # all_df = extract_seasonal_feat(all_df, f='Adjusted_close_Hnorm', window_size=22)
     all_df = get_return_label(all_df)
-    all_df = add_type_id(meta_df, all_df)
+    # all_df = add_type_id(meta_df, all_df)
     all_df = symbol2assetID(meta_df, all_df)
     all_df = get_return_rank_label2(all_df)
 
@@ -349,7 +402,7 @@ def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dic
     test_df = all_df[all_df['data_type']=='test'].reset_index(drop=True)
 
     # save dataset
-    feat_type = 'BF_TF_ARF_WF'
+    feat_type = 'BF_TZS_AMN_WSA'
     train_df.to_csv(f'{self_data_path}train_rank_df_{feat_type}.csv', index=False)
     valid_df.to_csv(f'{self_data_path}valid_rank_df_{feat_type}.csv', index=False)
     test_df.to_csv(f'{self_data_path}test_rank_df_{feat_type}.csv', index=False)
@@ -362,8 +415,8 @@ def run_feature_enginner(data_path, meta_df, train_ratio, test_cnt, feat_agg_dic
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='M6 data_crawler')
-    parser.add_argument('--data_path', type=str, required=True, default="root_path/data/", help='crawled data saving path')
-    parser.add_argument('--self_data_path', type=str, required=True, default="root_path/pp_data/", help='M6_Universe data path')
+    parser.add_argument('--data_path', type=str, required=True, default="./data/", help='crawled data saving path')
+    parser.add_argument('--self_data_path', type=str, required=True, default="./pp_data/", help='M6_Universe data path')
     args = parser.parse_args()
 
     data_path = args.data_path
@@ -405,8 +458,8 @@ if __name__=="__main__":
     'high_low_ratio_Vnorm_win22_mean':[np.mean]
     }
 
-    train_ratio = 0.7 
-    test_cnt = 160    
+    train_ratio = 0.8 
+    test_cnt = 90    
 
     # Run feature engineering
     train_df, valid_df, test_df, predict_df = run_feature_enginner(data_path, meta_df,

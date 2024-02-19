@@ -20,9 +20,9 @@ import time
 import datetime
 import warnings
 warnings.filterwarnings('ignore')
+from tqdm import tqdm
 
-
-from utils import read_dataset, symbol2assetID, plot_feat_importances
+from utils import read_dataset, symbol2assetID, plot_feat_importances, set_seed
 from feature import feature_selection
 from eval import multi_class_eval, cal_overallRPS, prepare_sub, sub_checker
 
@@ -37,13 +37,10 @@ import logging
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 import random
 
-def seed_tensorflow(seed=2020):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
-
-seed_tensorflow()
+# force to cpu running
+cpu = tf.config.list_physical_devices("CPU")
+tf.config.set_visible_devices(cpu)
+print(tf.config.list_logical_devices())
 
 def make_dataset(feature, asset_id, y, batch_size=800, mode="train"):
     '''Prepare train dataset'''
@@ -110,8 +107,6 @@ def get_model(feat_size, dr, id_size, id_df):
     model = tf.keras.Model(inputs=[asset_id_inputs, feature_inputs], outputs=[output])
     model.compile(optimizer=tf.optimizers.Adam(0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
-
-
 
 
 def run(model_params, 
@@ -214,9 +209,10 @@ def run(model_params,
     print('==========Total Result Analysis==========')
     # Calculate classification metrics for multiple-day assets.
     print('\n')
-    multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
-    multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
-    multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
+    trn_acc, trn_micro_recall, trn_macro_recall, trn_micro_f1, trn_macro_f1 = multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
+    val_acc, val_micro_recall, val_macro_recall, val_micro_f1, val_macro_f1 = multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
+    tst_acc, tst_micro_recall, tst_macro_recall, tst_micro_f1, tst_macro_f1 = multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
+
 
     # Calculate rps metrics for multiple-day assets
     trn_overallRPS = cal_overallRPS(train_df)
@@ -241,24 +237,25 @@ def run(model_params,
     sub_df.to_csv(sub_fname, index=False)
 
 
-
 if __name__=="__main__":
+    seed = 1996
+    set_seed(seed) 
     model_params = {'num_class':5,
                 'dropout_rate':0.3,
                 'patience':10,
-                'epoch':100}
+                'epoch':500}
 
     root_path = './'
-    feat_type = 'BF_TF_ARF_WF'
-    train_fname = f'pp_data/train_rank_df_{feat_type}.csv'
-    valid_fname = f'pp_data/valid_rank_df_{feat_type}.csv'
-    test_fname = f'pp_data/test_rank_df_{feat_type}.csv'
-    pred_fname = f'pp_data/predict_rank_df_{feat_type}.csv'
-    meta_fname = f'pp_data/M6_Universe.csv'
+    feat_type = 'BF_TZS_AMN_WSA'
+    train_fname = f'pp_data2/train_rank_df_{feat_type}.csv'
+    valid_fname = f'pp_data2/valid_rank_df_{feat_type}.csv'
+    test_fname = f'pp_data2/test_rank_df_{feat_type}.csv'
+    pred_fname = f'pp_data2/predict_rank_df_{feat_type}.csv'
+    meta_fname = f'pp_data2/M6_Universe.csv'
 
     # feature selection
     top_fnum = None
-    corr_thresh = 0.15 # 0.10
+    corr_thresh = 0.155
 
     infer_flag = False               # Is it the inference stage (i.e., training using the entire dataset)?
     scale_flag = True               # scale or not
@@ -270,4 +267,3 @@ if __name__=="__main__":
         infer_flag, scale_flag,
         remove_unstable_flag, top_fnum, corr_thresh,
         save_model_flag)
-

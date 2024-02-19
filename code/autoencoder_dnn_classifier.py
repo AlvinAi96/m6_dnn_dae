@@ -12,6 +12,7 @@ function:
 
 
 import os
+from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import gc
@@ -22,7 +23,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-from utils import read_dataset, symbol2assetID, plot_feat_importances
+from utils import read_dataset, symbol2assetID, plot_feat_importances, set_seed
 from feature import feature_selection
 from eval import multi_class_eval, cal_overallRPS, prepare_sub, sub_checker
 
@@ -37,21 +38,18 @@ import logging
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 import random
 
-def seed_tensorflow(seed=2020):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
+# force to cpu running
+cpu = tf.config.list_physical_devices("CPU")
+tf.config.set_visible_devices(cpu)
+print(tf.config.list_logical_devices())
 
-seed_tensorflow()
-
-def make_dataset(feature, asset_id, y, batch_size=800, mode="train"):
+def make_dataset(feature, asset_id, y, seed, batch_size=800, mode="train"):
     '''Prepare train dataset'''
     # transfer multi-D tensor -> 1d tensor
     ds = tf.data.Dataset.from_tensor_slices(((asset_id, feature), (feature, y, y)))
     if mode == "train":
         # in avoid of insufficient memory ，shuffle for each buffer_size data
-        ds = ds.shuffle(buffer_size=4096, seed=2022)
+        ds = ds.shuffle(buffer_size=4096, seed=seed)
     # Improve the training process by loading batches into memory, 
     # allowing for GPU training while the CPU prepares the data for the next training iteration.
     ds = ds.batch(batch_size).cache().prefetch(tf.data.experimental.AUTOTUNE) 
@@ -126,7 +124,7 @@ def get_model(feat_size, dr, id_size, id_df):
 
 
 def run(model_params, 
-        root_path, train_fname, valid_fname, test_fname, pred_fname, meta_fname,
+        root_path, train_fname, valid_fname, test_fname, pred_fname, meta_fname, seed,
         infer_flag=False, scale_flag=True,
         remove_unstable_flag=True, top_fnum=None, corr_thresh=0.10,
         save_model_flag=True):
@@ -157,8 +155,8 @@ def run(model_params,
                 f not in SELF_DEFINE_USELESS_COLS and \
                 'ind_mean' not in f and 'ind_var' not in f:   # drop industry-agg feature
             USE_COLS.append(f) 
-
-
+            
+    print('init feature number:', len(USE_COLS))
     asset_id_df = pd.DataFrame({'asset':list(train_df['asset'].unique())})
 
     # standardlization
@@ -184,7 +182,7 @@ def run(model_params,
     USE_COLS.append('asset') 
     FEAT_SIZE = len(USE_COLS)                                       # feature number
     ID_SIZE = 100                                                   # asset number
-
+    print('feature_size:', FEAT_SIZE)
     # print model
     model = get_model(feat_size=FEAT_SIZE, dr=model_params['dropout_rate'], id_size=ID_SIZE, id_df=asset_id_df)
     model.summary()
@@ -192,9 +190,9 @@ def run(model_params,
     del model
 
     # prepare dataset
-    train_ds = make_dataset(train_df[USE_COLS], train_df['asset'], train_df[RANK_DIST_COLS], mode='train')
-    valid_ds = make_dataset(valid_df[USE_COLS], valid_df['asset'], valid_df[RANK_DIST_COLS], mode='valid')
-    test_ds = make_dataset(test_df[USE_COLS], test_df['asset'], test_df[RANK_DIST_COLS], mode='test')
+    train_ds = make_dataset(train_df[USE_COLS], train_df['asset'], train_df[RANK_DIST_COLS], mode='train', seed=seed)
+    valid_ds = make_dataset(valid_df[USE_COLS], valid_df['asset'], valid_df[RANK_DIST_COLS], mode='valid', seed=seed)
+    test_ds = make_dataset(test_df[USE_COLS], test_df['asset'], test_df[RANK_DIST_COLS], mode='test', seed=seed)
     pred_ds = make_test_dataset(pred_df[USE_COLS], pred_df[['asset']])
 
     # train, valid, save model
@@ -203,13 +201,13 @@ def run(model_params,
         model_path = root_path + 'model/autoencoder_dnn/'
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-        checkpoint = keras.callbacks.ModelCheckpoint(model_path + "autoencoder_dnn_model", save_best_only=True)
+        checkpoint = keras.callbacks.ModelCheckpoint(model_path + "autoencoder_dnn_model2_2_featexp2", save_best_only=True)
     early_stop = keras.callbacks.EarlyStopping(patience=model_params['patience'])
     if infer_flag == True:
         history = model.fit(train_ds, epochs=model_params['epoch'], validation_data=test_ds, callbacks=[checkpoint, early_stop])
     else:
         history = model.fit(train_ds, epochs=model_params['epoch'], validation_data=valid_ds, callbacks=[checkpoint, early_stop])
-    model = keras.models.load_model(model_path + "autoencoder_dnn_model")
+    model = keras.models.load_model(model_path + "autoencoder_dnn_model2_2_featexp2")
 
     # predict
     train_df.loc[:, PRED_RANK_DIST_COLS] = model.predict(train_ds)[2]
@@ -223,9 +221,9 @@ def run(model_params,
     print('==========Total Result Analysis==========')
     # Calculate classification metrics for multiple-day assets.
     print('\n')
-    multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
-    multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
-    multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
+    trn_acc, trn_micro_recall, trn_macro_recall, trn_micro_f1, trn_macro_f1 = multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
+    val_acc, val_micro_recall, val_macro_recall, val_micro_f1, val_macro_f1 = multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
+    tst_acc, tst_micro_recall, tst_macro_recall, tst_micro_f1, tst_macro_f1 = multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
 
     # Calculate rps metrics for multiple-day assets
     trn_overallRPS = cal_overallRPS(train_df)
@@ -250,24 +248,25 @@ def run(model_params,
     sub_df.to_csv(sub_fname, index=False)
 
 
-
 if __name__=="__main__":
+    seed = 1996
+    set_seed(seed)    
     model_params = {'num_class':5,
                 'dropout_rate':0.3,
                 'patience':10,
-                'epoch':100}
+                'epoch':500}
 
     root_path = './'
-    feat_type = 'BF_TF_ARF_WF'
-    train_fname = f'pp_data/train_rank_df_{feat_type}.csv'
-    valid_fname = f'pp_data/valid_rank_df_{feat_type}.csv'
-    test_fname = f'pp_data/test_rank_df_{feat_type}.csv'
-    pred_fname = f'pp_data/predict_rank_df_{feat_type}.csv'
-    meta_fname = f'pp_data/M6_Universe.csv'
+    feat_type = 'BF_TZS_AMN_WSA'
+    train_fname = f'pp_data2/train_rank_df_{feat_type}.csv'
+    valid_fname = f'pp_data2/valid_rank_df_{feat_type}.csv'
+    test_fname = f'pp_data2/test_rank_df_{feat_type}.csv'
+    pred_fname = f'pp_data2/predict_rank_df_{feat_type}.csv'
+    meta_fname = f'pp_data2/M6_Universe.csv'
 
     # feature selection
     top_fnum = None
-    corr_thresh = 0.15
+    corr_thresh = 0.155
 
     infer_flag = False               # Is it the inference stage (i.e., training using the entire dataset)?
     scale_flag = True               # scale or not
@@ -275,7 +274,8 @@ if __name__=="__main__":
     save_model_flag = True          # save best model ckpt or not
 
     run(model_params, 
-        root_path, train_fname, valid_fname, test_fname, pred_fname, meta_fname,
+        root_path, train_fname, valid_fname, test_fname, pred_fname, meta_fname, seed,
         infer_flag, scale_flag,
         remove_unstable_flag, top_fnum, corr_thresh,
         save_model_flag)
+        

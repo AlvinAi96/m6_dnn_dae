@@ -17,17 +17,16 @@ import numpy as np
 import gc
 import datetime
 import time
+from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
 
-from utils import read_dataset, symbol2assetID, plot_feat_importances
+from utils import read_dataset, symbol2assetID, plot_feat_importances, set_seed
 from feature import feature_selection
 from eval import multi_class_eval, cal_overallRPS, prepare_sub, sub_checker
 
-
 import lightgbm as lgb
-
 
 
 def run(model_params,
@@ -52,6 +51,7 @@ def run(model_params,
     RANK_DIST_COLS = [TARGET_COL+str(i) for i in range(1, NUM_CLASS+1)] # gt soft Rank label
     PRED_RANK_DIST_COLS = ['pred_'+f for f in RANK_DIST_COLS]           # pred soft Rank label
     SELF_DEFINE_USELESS_COLS = ['symbol', 'GICS_sector/ETF_type', 'type_id', 'subtype_id', 'data_type', 'return'] 
+
     USE_COLS = []  
     for f in list(train_df):
         if f not in ['asset', 'Date'] and \
@@ -61,6 +61,7 @@ def run(model_params,
                 'ind_mean' not in f and 'ind_var' not in f:   # drop industry-agg feature
             USE_COLS.append(f)                                     
 
+    
     # feature selection
     if remove_unstable_flag == True:
         unstable_feats = feature_selection.get_corr_unstable_feats(train_df, USE_COLS, top_fnum, corr_thresh)
@@ -111,14 +112,14 @@ def run(model_params,
 
     # plot feature importance
     if visual_import_flag == True:
-        _ = plot_feat_importances(USE_COLS, lgb_model, 'lightgbm', root_path+'code/')
+        _ = plot_feat_importances(USE_COLS, lgb_model, 'lightgbm', root_path+'./')
         
 
     print('==========Total Result Analysis==========')
     # Calculate classification metrics for multiple-day assets.
-    multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
-    multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
-    multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
+    trn_acc, trn_micro_recall, trn_macro_recall, trn_micro_f1, trn_macro_f1 = multi_class_eval(train_df['Rank'], train_df['pred_Rank'], 'train')
+    val_acc, val_micro_recall, val_macro_recall, val_micro_f1, val_macro_f1 = multi_class_eval(valid_df['Rank'], valid_df['pred_Rank'], 'valid')
+    tst_acc, tst_micro_recall, tst_macro_recall, tst_micro_f1, tst_macro_f1 = multi_class_eval(test_df['Rank'], test_df['pred_Rank'], 'test')
 
     # Calculate rps metrics for multiple-day assets
     trn_overallRPS = cal_overallRPS(train_df)
@@ -141,44 +142,42 @@ def run(model_params,
     sub_df = sub_checker(sub_df, meta_df)  # check submission
     sub_fname = result_path + 'lgb_sub_{}_final.csv'.format(str(datetime.datetime.today()).split(' ')[0].replace('-',''))
     sub_df.to_csv(sub_fname, index=False)
-    
-
 
 if __name__=="__main__":
+    set_seed(1996)
     model_params = {
     'objective':'multiclass',
     'metric':{'multiclass','multi_error'},
     'num_class':5,
     'learning_rate':0.1,
-    'seed':2022,
+    'seed':1996,
     'boosting_type':'gbdt', # note: dart don't support early stopping
     'early_stopping_round':3,
-    'colsample_bytree':0.5, # .6
-    'subsample': 0.5, # .6
-    'lambda_l1': 1.2, # .8
-    'lambda_l2': 1.2, # .8
+    'colsample_bytree':0.5,
+    'subsample': 0.5,
+    'lambda_l1': 1.2,
+    'lambda_l2': 1.2,
     'n_jobs': -1,
     'verbose':-1
     }   
 
     root_path = './'
-    feat_type = 'BF_TF_ARF_WF'
-    train_fname = f'pp_data/train_rank_df_{feat_type}.csv'
-    valid_fname = f'pp_data/valid_rank_df_{feat_type}.csv'
-    test_fname = f'pp_data/test_rank_df_{feat_type}.csv'
-    pred_fname = f'pp_data/predict_rank_df_{feat_type}.csv'
-    meta_fname = f'pp_data/M6_Universe.csv'
+    feat_type = 'BF_TZS_AMN_WSA'
+    train_fname = f'pp_data2/train_rank_df_{feat_type}.csv'
+    valid_fname = f'pp_data2/valid_rank_df_{feat_type}.csv'
+    test_fname = f'pp_data2/test_rank_df_{feat_type}.csv'
+    pred_fname = f'pp_data2/predict_rank_df_{feat_type}.csv'
+    meta_fname = f'pp_data2/M6_Universe.csv'
     
     # feature selection
     top_fnum = None
-    corr_thresh = 0.10
+    corr_thresh = 0.155
 
     infer_flag = False               # Is it the inference stage (i.e., training using the entire dataset)?
     remove_unstable_flag = True     # feature selection or not 
-    save_model_flag = True           # save bes model ckpt or not
+    save_model_flag = False           # save bes model ckpt or not
     visual_import_flag = True        # plot feature importance or not
 
-    
     run(model_params,
         root_path, train_fname, valid_fname, test_fname, pred_fname, meta_fname,
         infer_flag,
