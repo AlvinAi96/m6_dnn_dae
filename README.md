@@ -8,7 +8,7 @@ Final Global Rank: 4th<br>
 cd m6_dea_dnn
 ```
 
-(1) Data Pulling
+Data Pulling
 ```
 python ./code/feature/data_crawler.py --meta_path './eod_data/M6_Universe.csv' --api_key '[EOD API key]' --save_path './data/' --year_duration 5
 ```
@@ -33,4 +33,25 @@ python ./code/autoencoder_dnn_classifier.py
 ```
 
 (4) Decision Making
-Decision making with ``data_preparation.ipynb`` and ``risk_evaluation.ipynb``.
+
+- Data Preparation: ```data_preparation.ipynb```
+- Traditional models:  ```traditional_models.ipynb```
+- GA and PSO: ```nonlinear_models.ipynb```
+- DE: ```DE_experiments.ipynb```
+
+Experiment result see: 
+```
+# Traditional models
+traditional_models.ipynb
+
+# GA
+ga_weights.zip
+
+# PSO
+pso_weights.zip
+
+# DE
+de_weights_100_100.zip
+de_weights_maxiter.zip
+de_weights_sizepop.zip
+```
